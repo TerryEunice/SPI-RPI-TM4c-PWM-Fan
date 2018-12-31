@@ -50,3 +50,12 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+#Kiel Files
+*.uvopt
+*.uvproj
+*.uvgui
+*.Peter
+*.bak
+*.crf
+*.iex
