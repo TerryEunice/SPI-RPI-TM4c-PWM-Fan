@@ -28,6 +28,7 @@ int main(int argc,char **argv){
    int32_t temperature = 50;
    int32_t fan_speed = 90;
    char message[7];
+   uint8_t temp=0;
    //setup the SPI connexion 
    if(bcm2835_init() == 0){
       exit(1); //failed to initialize gpio
@@ -53,7 +54,14 @@ int main(int argc,char **argv){
       printf("Temperature: %d\tFan speed: %d\%\n", temperature, (fan_speed >> 10)); //TODO: Replace with SPI communication
       //SPI communication
       create_pwm_message(fan_speed, message);
-      bcm2835_spi_writenb(split_speed, 4); //send 4 bytes over SPI 
+      //Due to differences in SPI between PI and TM4c only single byte messages work correctly
+      temp = bcm2835_spi_transfer(message[0]);
+      temp = bcm2835_spi_transfer(message[1]);
+      temp = bcm2835_spi_transfer(message[2]);
+      temp = bcm2835_spi_transfer(message[3]);
+      temp = bcm2835_spi_transfer(message[4]);
+      temp = bcm2835_spi_transfer(message[5]);
+      temp = bcm2835_spi_transfer(message[6]);
    }
    bcm2835_spi_end();
    bcm2835_close();
@@ -71,7 +79,7 @@ void create_pwm_message(int32_t integer, char *array){
    array[6] = (char) ((integer >> 24) & 0xFF);
  
    //debug code to ensure working correctly
-   printf("Integer: %x\t LSB: %x\t BT1: %x\t BT2: %x\t MSB: %x\n", integer, array[0], array[1], array[2], array[3]);
+   printf("Integer: %x\t LSB: %x\t BT1: %x\t BT2: %x\t MSB: %x\n", integer, array[3], array[4], array[5], array[6]);
 }
 
 int32_t get_temperature(void){
