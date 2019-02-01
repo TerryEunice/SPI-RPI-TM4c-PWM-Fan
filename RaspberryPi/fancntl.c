@@ -11,13 +11,23 @@
 //Function prototypes
 int32_t get_temperature(void); //This fucntion pipes in the output from vcgencmd measure_temp and parses it to get temperature data
 
-void int32_to_chararray(int32_t integer, char *array); //assumes the array is at least 4 in size
+/* create_pwm_message
+ * Takes a 32 bit integer representing a 10 bit precision fixed point 
+ * temperature and converts it into the message format described below
+ * for transmission to the microcontroller.
+ * Message Format: Byte 0 -> Start Byte = 0xBE
+ *                Byte 1 -> Command
+ *                Byte 2 -> Amount of Data Bytes to Follow
+ *                Bytes 3-n -> Data associated with the command
+ * INPUT: 32 bit temperature, byte array for message (assumed to be at least 7 bytes)
+ */
+void create_pwm_message(int32_t integer, char *array);
 
 
 int main(int argc,char **argv){
    int32_t temperature = 50;
    int32_t fan_speed = 90;
-   char split_speed[4];
+   char message[7];
    //setup the SPI connexion 
    if(bcm2835_init() == 0){
       exit(1); //failed to initialize gpio
@@ -42,7 +52,7 @@ int main(int argc,char **argv){
       fan_speed = 1536 * temperature - 20480;
       printf("Temperature: %d\tFan speed: %d\%\n", temperature, (fan_speed >> 10)); //TODO: Replace with SPI communication
       //SPI communication
-      int32_to_chararray(fan_speed, split_speed);
+      create_pwm_message(fan_speed, message);
       bcm2835_spi_writenb(split_speed, 4); //send 4 bytes over SPI 
    }
    bcm2835_spi_end();
@@ -51,11 +61,14 @@ int main(int argc,char **argv){
 
 }
 
-void int32_to_chararray(int32_t integer, char *array){
-   array[0] = (char) (integer & 0xFF); //LSB first
-   array[1] = (char) ((integer >> 8) & 0xFF);
-   array[2] = (char) ((integer >> 16) & 0xFF);
-   array[3] = (char) ((integer >> 24) & 0xFF);
+void create_pwm_message(int32_t integer, char *array){
+   array[0] = 0xBE; //start byte
+   array[1] = 0x1; //command number 1
+   array[2] = 0x4; //4 bytes to follow
+   array[3] = (char) (integer & 0xFF); //LSB first
+   array[4] = (char) ((integer >> 8) & 0xFF);
+   array[5] = (char) ((integer >> 16) & 0xFF);
+   array[6] = (char) ((integer >> 24) & 0xFF);
  
    //debug code to ensure working correctly
    printf("Integer: %x\t LSB: %x\t BT1: %x\t BT2: %x\t MSB: %x\n", integer, array[0], array[1], array[2], array[3]);
